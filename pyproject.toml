@@ -1,0 +1,21 @@
+[project]
+name = "secret-portal"
+version = "0.1.0"
+description = "Spin up a temporary web UI for securely entering secret keys and env vars"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Aaron Levin", email = "awlevin@comcast.net" },
+]
+dependencies = []
+
+[project.scripts]
+secret-portal = "secret_portal.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
