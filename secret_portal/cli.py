@@ -615,6 +615,20 @@ def main():
 
         url = f"http://{hostname}/?t={token}"
 
+    # Self-check: verify the portal is reachable if no tunnel
+    if args.tunnel == "none":
+        try:
+            import urllib.request
+            ext_url = f"http://{hostname}/"
+            urllib.request.urlopen(ext_url, timeout=3)
+        except urllib.error.HTTPError:
+            pass  # 403 = reachable, just no token
+        except Exception:
+            print(f"⚠️  WARNING: port {port} may not be reachable from the internet.", flush=True)
+            print(f"   the server is running locally but external connections will likely fail.", flush=True)
+            print(f"   fix: use --tunnel cloudflared (recommended) or open port {port} in your firewall/security group.", flush=True)
+            print(f"", flush=True)
+
     print(f"🔐 secret portal is live!", flush=True)
     print(f"   url: {url}", flush=True)
     print(f"   saving to: {args.env_file}", flush=True)
