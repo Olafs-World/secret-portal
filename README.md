@@ -1,3 +1,10 @@
+![secret-portal banner](https://raw.githubusercontent.com/Olafs-World/secret-portal/main/banner.png)
+
+[![CI](https://github.com/Olafs-World/secret-portal/actions/workflows/ci.yml/badge.svg)](https://github.com/Olafs-World/secret-portal/actions/workflows/ci.yml)
+[![PyPI version](https://badge.fury.io/py/secret-portal.svg)](https://pypi.org/project/secret-portal/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 # 🔐 secret-portal
 
 spin up a temporary web UI for securely entering secret keys and environment variables.
