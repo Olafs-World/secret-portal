@@ -15,8 +15,16 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 
-def generate_html(token: str, env_file: str) -> str:
+def generate_html(
+    token: str,
+    env_file: str,
+    key_name: str | None = None,
+    instructions: str | None = None,
+    link: str | None = None,
+    link_text: str = "Open console →",
+) -> str:
     """Generate the single-page HTML UI."""
+    single_key = key_name is not None
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -162,6 +170,75 @@ def generate_html(token: str, env_file: str) -> str:
     color: var(--muted);
     font-size: 0.75rem;
   }}
+  .guide {{
+    background: rgba(88, 166, 255, 0.05);
+    border: 1px solid rgba(88, 166, 255, 0.15);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    color: var(--muted);
+  }}
+  .guide ol, .guide ul {{
+    padding-left: 1.25rem;
+    margin: 0.5rem 0;
+  }}
+  .guide li {{
+    margin-bottom: 0.35rem;
+  }}
+  .guide strong {{
+    color: var(--text);
+  }}
+  .guide code {{
+    background: var(--bg);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: var(--accent);
+  }}
+  .guide a {{
+    color: var(--accent);
+    text-decoration: none;
+  }}
+  .guide a:hover {{
+    text-decoration: underline;
+  }}
+  .guide-link {{
+    display: inline-block;
+    margin-top: 0.75rem;
+    padding: 0.5rem 1rem;
+    background: rgba(88, 166, 255, 0.1);
+    border: 1px solid rgba(88, 166, 255, 0.25);
+    border-radius: 8px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+  }}
+  .guide-link:hover {{
+    background: rgba(88, 166, 255, 0.2);
+    text-decoration: none;
+  }}
+  .single-entry {{
+    text-align: center;
+  }}
+  .key-label {{
+    display: block;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.5px;
+  }}
+  .single-entry .val-input {{
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    text-align: center;
+  }}
   .meta code {{
     background: var(--surface);
     padding: 0.15rem 0.4rem;
@@ -177,16 +254,21 @@ def generate_html(token: str, env_file: str) -> str:
     <p>enter secrets below. they'll be saved server-side.<br>this page expires after one submission.</p>
   </div>
   <div class="card">
+    {"" if not instructions and not link else '<div class="guide">' + (instructions or "") + ("" if not link else f'<br><a class="guide-link" href="{html.escape(link)}" target="_blank" rel="noopener">{html.escape(link_text)}</a>') + '</div>'}
     <div id="entries">
-      <div class="entry">
+      {"" if single_key else """<div class="entry">
         <input type="text" class="key-input" placeholder="KEY_NAME" spellcheck="false">
         <input type="password" class="val-input" placeholder="value" spellcheck="false">
         <button class="remove-btn" onclick="removeEntry(this)" title="remove">×</button>
-      </div>
+      </div>"""}
+      {"" if not single_key else f"""<div class="single-entry">
+        <label class="key-label">{html.escape(key_name or "")}</label>
+        <input type="password" class="val-input" id="single-val" placeholder="paste your secret here" spellcheck="false" autocomplete="off">
+      </div>"""}
     </div>
     <div class="actions">
-      <button class="btn btn-secondary" onclick="addEntry()">+ add</button>
-      <button class="btn btn-primary" id="submitBtn" onclick="submit()">save secrets</button>
+      {"" if single_key else '<button class="btn btn-secondary" onclick="addEntry()">+ add</button>'}
+      <button class="btn btn-primary" id="submitBtn" onclick="submit()">{"save" if single_key else "save secrets"}</button>
     </div>
     <div class="status" id="status"></div>
   </div>
@@ -194,6 +276,7 @@ def generate_html(token: str, env_file: str) -> str:
 </div>
 <script>
 const TOKEN = "{token}";
+const SINGLE_KEY = {"'" + html.escape(key_name or "") + "'" if single_key else "null"};
 
 function addEntry() {{
   const div = document.createElement('div');
@@ -213,20 +296,28 @@ function removeEntry(btn) {{
 }}
 
 async function submit() {{
-  const entries = document.querySelectorAll('.entry');
   const secrets = {{}};
-  let valid = true;
 
-  entries.forEach(e => {{
-    const k = e.querySelector('.key-input').value.trim();
-    const v = e.querySelector('.val-input').value;
-    if (k && v) secrets[k] = v;
-    else if (k || v) valid = false;
-  }});
-
-  if (!valid || Object.keys(secrets).length === 0) {{
-    showStatus('enter at least one complete key-value pair', 'error');
-    return;
+  if (SINGLE_KEY) {{
+    const v = document.getElementById('single-val').value;
+    if (!v) {{
+      showStatus('please enter the secret value', 'error');
+      return;
+    }}
+    secrets[SINGLE_KEY] = v;
+  }} else {{
+    const entries = document.querySelectorAll('.entry');
+    let valid = true;
+    entries.forEach(e => {{
+      const k = e.querySelector('.key-input').value.trim();
+      const v = e.querySelector('.val-input').value;
+      if (k && v) secrets[k] = v;
+      else if (k || v) valid = false;
+    }});
+    if (!valid || Object.keys(secrets).length === 0) {{
+      showStatus('enter at least one complete key-value pair', 'error');
+      return;
+    }}
   }}
 
   const btn = document.getElementById('submitBtn');
@@ -263,7 +354,7 @@ function showStatus(msg, type) {{
 }}
 
 // focus first input
-document.querySelector('.key-input').focus();
+(document.getElementById('single-val') || document.querySelector('.key-input')).focus();
 </script>
 </body>
 </html>"""
@@ -297,7 +388,10 @@ class PortalHandler(BaseHTTPRequestHandler):
             self.wfile.write(b"<h3>this portal has already been used</h3>")
             return
 
-        body = generate_html(self.server.token, self.server.env_file).encode()
+        body = generate_html(
+            self.server.token, self.server.env_file, self.server.key_name,
+            self.server.instructions, self.server.link, self.server.link_text,
+        ).encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -352,7 +446,7 @@ class PortalHandler(BaseHTTPRequestHandler):
         count = len(data)
         keys = list(data.keys())
         self.server.saved_keys = keys
-        print(f"✅ saved {count} secret(s): {', '.join(keys)}", flush=True)
+        print(f"✅ saved {count} secret(s)", flush=True)
         print(f"   → {env_path}", flush=True)
 
         self._json_response(200, {"ok": True, "count": count})
@@ -372,10 +466,15 @@ class PortalHandler(BaseHTTPRequestHandler):
 class PortalServer(HTTPServer):
     """Extended HTTPServer with portal state."""
 
-    def __init__(self, addr, handler, token: str, env_file: str):
+    def __init__(self, addr, handler, token: str, env_file: str, key_name: str | None = None,
+                 instructions: str | None = None, link: str | None = None, link_text: str = "Open console →"):
         super().__init__(addr, handler)
         self.token = token
         self.env_file = env_file
+        self.key_name = key_name
+        self.instructions = instructions
+        self.link = link
+        self.link_text = link_text
         self.used = False
         self.saved_keys: list[str] = []
 
@@ -406,27 +505,115 @@ def main():
         default=300,
         help="Auto-shutdown after N seconds with no submission (default: 300)",
     )
+    parser.add_argument(
+        "-k", "--key",
+        default=None,
+        help="Pre-populate a single key name (user only needs to enter the value)",
+    )
+    parser.add_argument(
+        "-i", "--instructions",
+        default=None,
+        help="Instructions/guide text shown above the input (supports basic HTML)",
+    )
+    parser.add_argument(
+        "-l", "--link",
+        default=None,
+        help="URL where the user can get/create the key (shown as a button)",
+    )
+    parser.add_argument(
+        "--link-text",
+        default="Open console →",
+        help="Label for the link button (default: 'Open console →')",
+    )
+    parser.add_argument(
+        "--tunnel",
+        choices=["ngrok", "cloudflared", "none"],
+        default="none",
+        help="Tunnel provider to expose the portal publicly (default: none)",
+    )
     args = parser.parse_args()
 
     token = secrets.token_urlsafe(32)
-    server = PortalServer((args.host, args.port), PortalHandler, token, args.env_file)
+    server = PortalServer(
+        (args.host, args.port), PortalHandler, token, args.env_file,
+        args.key, args.instructions, args.link, args.link_text,
+    )
     port = server.server_address[1]
 
-    # Try to detect public IP/hostname
-    hostname = os.environ.get("PORTAL_HOST", "")
-    if not hostname:
-        try:
-            import urllib.request
-            hostname = urllib.request.urlopen(
-                "http://checkip.amazonaws.com", timeout=2
-            ).read().decode().strip()
-        except Exception:
-            hostname = "localhost"
+    # Determine public URL
+    tunnel_process = None
+    if args.tunnel == "ngrok":
+        import subprocess, time as _time
+        tunnel_process = subprocess.Popen(
+            ["ngrok", "http", str(port), "--log", "stdout", "--log-format", "json"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        public_url = None
+        deadline = _time.time() + 10
+        while _time.time() < deadline:
+            try:
+                import urllib.request
+                resp = urllib.request.urlopen("http://127.0.0.1:4040/api/tunnels", timeout=2)
+                tunnels = json.loads(resp.read())
+                for t in tunnels.get("tunnels", []):
+                    if t.get("public_url", "").startswith("https://"):
+                        public_url = t["public_url"]
+                        break
+                if public_url:
+                    break
+            except Exception:
+                pass
+            _time.sleep(0.5)
+        if not public_url:
+            print("❌ failed to start ngrok tunnel", flush=True)
+            tunnel_process.kill()
+            sys.exit(1)
+        url = f"{public_url}/?t={token}"
 
-    if ":" not in hostname:
-        hostname = f"{hostname}:{port}"
+    elif args.tunnel == "cloudflared":
+        import subprocess, time as _time, re as _re
+        cf_bin = "cloudflared"
+        # check common locations
+        for candidate in ["cloudflared", os.path.expanduser("~/cloudflared")]:
+            if os.path.isfile(candidate) or os.system(f"which {candidate} >/dev/null 2>&1") == 0:
+                cf_bin = candidate
+                break
+        tunnel_process = subprocess.Popen(
+            [cf_bin, "tunnel", "--url", f"http://localhost:{port}"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        public_url = None
+        deadline = _time.time() + 15
+        while _time.time() < deadline:
+            # cloudflared prints URL to stderr
+            import select
+            if select.select([tunnel_process.stderr], [], [], 0.5)[0]:
+                line = tunnel_process.stderr.readline().decode(errors="ignore")
+                m = _re.search(r"(https://[a-z0-9-]+\.trycloudflare\.com)", line)
+                if m:
+                    public_url = m.group(1)
+                    break
+        if not public_url:
+            print("❌ failed to start cloudflared tunnel", flush=True)
+            tunnel_process.kill()
+            sys.exit(1)
+        url = f"{public_url}/?t={token}"
 
-    url = f"http://{hostname}/?t={token}"
+    else:
+        hostname = os.environ.get("PORTAL_HOST", "")
+        if not hostname:
+            try:
+                import urllib.request
+                hostname = urllib.request.urlopen(
+                    "http://checkip.amazonaws.com", timeout=2
+                ).read().decode().strip()
+            except Exception:
+                hostname = "localhost"
+
+        if ":" not in hostname:
+            hostname = f"{hostname}:{port}"
+
+        url = f"http://{hostname}/?t={token}"
 
     print(f"🔐 secret portal is live!", flush=True)
     print(f"   url: {url}", flush=True)
@@ -452,8 +639,12 @@ def main():
     finally:
         timer.cancel()
 
+    if tunnel_process:
+        tunnel_process.kill()
+        tunnel_process.wait()
+
     if server.saved_keys:
-        print(f"\n✨ done! saved: {', '.join(server.saved_keys)}")
+        print(f"\n✨ done! saved {len(server.saved_keys)} secret(s)")
     else:
         print("\n🚫 no secrets were saved")
 
