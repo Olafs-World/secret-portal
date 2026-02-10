@@ -529,7 +529,10 @@ def main():
         "--tunnel",
         choices=["ngrok", "cloudflared", "none"],
         default="none",
-        help="Tunnel provider to expose the portal publicly (default: none)",
+        help="Tunnel provider to expose the portal publicly (default: none). "
+             "cloudflared is recommended — it's free, has no interstitial pages, "
+             "and auto-downloads if missing. ngrok free tier shows a warning page "
+             "that blocks automated/mobile use.",
     )
     args = parser.parse_args()
 
