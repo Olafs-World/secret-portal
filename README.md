@@ -13,6 +13,8 @@ Spin up a temporary web UI for securely entering secret keys and environment var
 
 Entering API keys over messaging apps (Telegram, Slack, etc.) is sketchy — they get logged, cached, and stored in chat history. This tool spins up a one-time-use web form that saves secrets directly to an env file on your server.
 
+![Secret Portal screenshot](https://raw.githubusercontent.com/Olafs-World/secret-portal/main/screenshot.jpg)
+
 ## Install
 
 ```bash
