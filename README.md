@@ -27,6 +27,15 @@ Or with pip:
 pip install secret-portal
 ```
 
+### As an Agent Skill
+
+```bash
+npx skills add olafs-world/secret-portal
+
+# or with OpenClaw
+clawhub install olafs-world/secret-portal
+```
+
 ## Usage
 
 ```bash
